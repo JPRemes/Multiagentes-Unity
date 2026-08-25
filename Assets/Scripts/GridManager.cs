@@ -37,23 +37,7 @@ public class GridManager : MonoBehaviour
         tilesInstanciados = new GameObject[size, size];
         var rng = new System.Random();
 
-        // Manchas de lodo (random walk)
-        int nManchasLodo = 5;
-        for (int i = 0; i < nManchasLodo; i++)
-        {
-            int x = rng.Next(0, size);
-            int y = rng.Next(0, size);
-            int largo = rng.Next(5, 15);
-
-            for (int j = 0; j < largo; j++)
-            {
-                if (terreno[x, y] == TipoTerreno.Vacio)
-                    terreno[x, y] = TipoTerreno.Lodo;
-
-                x = Mathf.Clamp(x + rng.Next(-1, 2), 0, size - 1);
-                y = Mathf.Clamp(y + rng.Next(-1, 2), 0, size - 1);
-            }
-        }
+        // Lodo removido: el terreno ahora solo tiene Cultivo y Obstaculo.
 
         // Obstáculos
         float densidadObstaculo = 0.05f;
@@ -65,21 +49,11 @@ public class GridManager : MonoBehaviour
             terreno[x, y] = TipoTerreno.Obstaculo;
         }
 
-        // Cultivo
-        float densidadCultivo = 0.90f;
-        int nCultivo = Mathf.FloorToInt(size * size * densidadCultivo);
-        int colocados = 0, intentos = 0;
-        while (colocados < nCultivo && intentos < nCultivo * 20)
-        {
-            int x = rng.Next(0, size);
-            int y = rng.Next(0, size);
-            if (terreno[x, y] == TipoTerreno.Vacio)
-            {
-                terreno[x, y] = TipoTerreno.Cultivo;
-                colocados++;
-            }
-            intentos++;
-        }
+        // Cultivo: llena TODO lo que no sea obstáculo, sin dejar celdas vacías.
+        for (int x = 0; x < size; x++)
+            for (int y = 0; y < size; y++)
+                if (terreno[x, y] == TipoTerreno.Vacio)
+                    terreno[x, y] = TipoTerreno.Cultivo;
 
         // Instanciar
         for (int x = 0; x < size; x++)
