@@ -11,6 +11,10 @@ public class Cosechadora : MonoBehaviour
     public float umbralTractor = 0.60f;
     public Tractor tractorAsignado;
 
+    // NUEVO: ajusta esto en el Inspector (0, 90, 180 o 270) si el modelo
+    // no queda mirando hacia donde se mueve.
+    public float offsetRotacionY = 0f;
+
     public Vector2Int PosGrid => new Vector2Int(Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.z));
 
     // NUEVO: le dice al tractor dónde va a estar esta cosechadora dentro de N pasos,
@@ -76,6 +80,12 @@ public class Cosechadora : MonoBehaviour
     {
         var siguiente = ruta[0];
         ruta.RemoveAt(0);
+
+        // NUEVO: rota el modelo para que mire hacia donde se está moviendo.
+        var direccion = new Vector3(siguiente.x - transform.position.x, 0, siguiente.y - transform.position.z);
+        if (direccion != Vector3.zero)
+            transform.rotation = Quaternion.LookRotation(direccion) * Quaternion.Euler(0, offsetRotacionY, 0);
+
         transform.position = new Vector3(siguiente.x, 0, siguiente.y);
 
         var terreno = sim.gridManager.terreno;
