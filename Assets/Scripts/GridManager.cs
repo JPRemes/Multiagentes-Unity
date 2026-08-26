@@ -7,7 +7,9 @@ public class GridManager : MonoBehaviour
     public int size = 25;
     public TipoTerreno[,] terreno;
     public GameObject[,] tilesInstanciados;
-    public GameObject prefabCultivo, prefabObstaculo, prefabLodo;
+    public GameObject prefabCultivo;
+    public GameObject[] prefabsObstaculo;
+    public GameObject prefabLodo;
 
     public int ContarCultivo()
     {
@@ -20,12 +22,14 @@ public class GridManager : MonoBehaviour
 
     void Awake() => GenerarTerreno();
 
-    private GameObject PrefabPara(TipoTerreno tipo)
+    private GameObject PrefabPara(TipoTerreno tipo, System.Random rng)
     {
         switch (tipo)
         {
             case TipoTerreno.Cultivo: return prefabCultivo;
-            case TipoTerreno.Obstaculo: return prefabObstaculo;
+            case TipoTerreno.Obstaculo:
+                if (prefabsObstaculo == null || prefabsObstaculo.Length == 0) return null;
+                return prefabsObstaculo[rng.Next(0, prefabsObstaculo.Length)];
             case TipoTerreno.Lodo: return prefabLodo;
             default: return null;
         }
@@ -60,7 +64,7 @@ public class GridManager : MonoBehaviour
             for (int y = 0; y < size; y++)
                 if (terreno[x, y] != TipoTerreno.Vacio)
                 {
-                    var tile = Instantiate(PrefabPara(terreno[x, y]), new Vector3(x, 0, y), Quaternion.identity, transform);
+                    var tile = Instantiate(PrefabPara(terreno[x, y], rng), new Vector3(x, 0, y), Quaternion.identity, transform);
                     tilesInstanciados[x, y] = tile;
                 }
     }
