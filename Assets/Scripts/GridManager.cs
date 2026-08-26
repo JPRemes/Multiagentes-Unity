@@ -11,6 +11,12 @@ public class GridManager : MonoBehaviour
     public GameObject[] prefabsObstaculo;
     public GameObject prefabLodo;
 
+    // NUEVO: arrastra aquí tu propio GameObject Plane (ya en la escena, con su
+    // material asignado). GridManager lo escala y centra automáticamente
+    // según 'size', sin importar el tamaño real de su mesh.
+    public GameObject planoSuelo;
+    public float margenSuelo = 2f; // cuánto se extiende más allá del borde del grid
+
     public int ContarCultivo()
     {
         int total = 0;
@@ -20,7 +26,42 @@ public class GridManager : MonoBehaviour
         return total;
     }
 
-    void Awake() => GenerarTerreno();
+    void Awake()
+    {
+        AjustarSuelo();
+        GenerarTerreno();
+    }
+
+    void AjustarSuelo()
+    {
+        if (planoSuelo == null) return;
+
+        // Instancia el prefab (tratándolo igual que prefabCultivo/prefabsObstaculo),
+        // en vez de esperar que ya exista un GameObject puesto a mano en la escena.
+        var instancia = Instantiate(planoSuelo, transform);
+
+        var renderer = instancia.GetComponent<Renderer>();
+        if (renderer == null) return;
+
+        // Mide el tamaño real del plano (sin importar si es el Plane default
+        // de Unity, un mesh distinto, o ya tiene una escala previa) usando sus
+        // bounds actuales, y calcula el factor para llegar al tamaño deseado.
+        float anchoActual = renderer.bounds.size.x;
+        float largoActual = renderer.bounds.size.z;
+
+        float ladoDeseado = size + margenSuelo * 2f;
+
+        var escala = instancia.transform.localScale;
+        escala.x *= ladoDeseado / anchoActual;
+        escala.z *= ladoDeseado / largoActual;
+        instancia.transform.localScale = escala;
+
+        // Centra el plano sobre el grid (las celdas van de 0 a size-1),
+        // conservando la altura Y que ya traiga el prefab.
+        float centro = (size - 1) / 2f;
+        var pos = instancia.transform.position;
+        instancia.transform.position = new Vector3(centro, pos.y, centro);
+    }
 
     private GameObject PrefabPara(TipoTerreno tipo, System.Random rng)
     {
