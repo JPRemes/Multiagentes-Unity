@@ -796,7 +796,7 @@ MonoBehaviour:
   prefabCultivo: {fileID: 2919052627280586676, guid: 1187d89a98e3e87499d6dca3df438e50, type: 3}
   prefabsObstaculo:
   - {fileID: 6270978406318446195, guid: 97547e1c66076458699e1e408dd7e0c1, type: 3}
-  - {fileID: 2023101933972434967, guid: e74b61f37ea774dea9be29e2469f273e, type: 3}
+  - {fileID: 2383098668547343578, guid: 613d076cd9c4740b38db30e4267bb28f, type: 3}
   prefabLodo: {fileID: 0}
   planoSuelo: {fileID: 460970818831875541, guid: acb3857421b954496a4e889a8de9235c, type: 3}
   margenSuelo: 0.2
