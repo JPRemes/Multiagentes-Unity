@@ -65,6 +65,8 @@ public class AgenteVisual
     public GameObject objeto;
     public Vector3 posInicial;
     public Vector3 posObjetivo;
+    public Quaternion rotInicial;
+    public Quaternion rotObjetivo;
     public float tiempoInicio;
 }
 
@@ -77,13 +79,26 @@ public class WebSocketManager : MonoBehaviour
     public GameObject tractorPrefab;
 
     [Header("Terreno")]
-    public GameObject tilePrefab;            // un Cube o Plane, escala 1x1
     public GameObject siloPrefab;            // opcional
 
-    [Header("Colores del terreno")]
-    public Color colorVacio = new Color(0.87f, 0.83f, 0.69f);
-    public Color colorCultivo = new Color(0.29f, 0.69f, 0.31f);
-    public Color colorObstaculo = new Color(0.36f, 0.23f, 0.13f);
+    // Prefab especifico para las celdas con cultivo (por
+    // ejemplo un modelo de trigo o una planta).
+    public GameObject cultivoPrefab;
+
+    // Varios prefabs posibles para obstaculos (rocas, arboles,
+    // etc): en cada celda con obstaculo se elige uno al azar,
+    // para que no se vea todo repetido.
+    public GameObject[] obstaculoPrefabs;
+
+    [Header("Rotacion de los agentes al moverse (grados en Y)")]
+    [Tooltip("Hacia donde debe mirar el prefab cuando se mueve hacia X positivo (la fila aumenta)")]
+    public float anguloMovXPositivo = 0f;
+    [Tooltip("Hacia donde debe mirar el prefab cuando se mueve hacia X negativo (la fila disminuye)")]
+    public float anguloMovXNegativo = 180f;
+    [Tooltip("Hacia donde debe mirar el prefab cuando se mueve hacia Z positivo (la columna aumenta)")]
+    public float anguloMovZPositivo = 90f;
+    [Tooltip("Hacia donde debe mirar el prefab cuando se mueve hacia Z negativo (la columna disminuye)")]
+    public float anguloMovZNegativo = 270f;
 
     [Header("Interfaz")]
     public TMP_Text statusText;
@@ -101,8 +116,7 @@ public class WebSocketManager : MonoBehaviour
     private Dictionary<string, AgenteVisual> agentes =
         new Dictionary<string, AgenteVisual>();
 
-    private Renderer[] tiles;                // tiles[fila * size + columna]
-    private List<GameObject> tileObjects = new List<GameObject>();
+    private GameObject[] decoraciones;        // decoracion actual de cada celda (o null)
     private int tamanoActual = -1;
     private float tickActual = 0.25f;
     private GameObject siloInstancia;
@@ -194,37 +208,56 @@ public class WebSocketManager : MonoBehaviour
 
     void ReconstruirTerreno(SimulationData data)
     {
-        // Si ya habia un grid armado, lo destruimos primero
-        // (esto pasa cuando cambia el tamaño en un reset).
-        foreach (GameObject tile in tileObjects)
+        Debug.Log(
+            $"[DIAGNOSTICO] ReconstruirTerreno llamado. size={data.size} " +
+            $"terreno.Length={data.terreno.Length} " +
+            $"decoraciones previas={(decoraciones == null ? "null" : decoraciones.Length.ToString())}"
+        );
+
+        // Si ya habia decoraciones puestas, las destruimos
+        // primero (esto pasa cuando cambia el tamaño en un reset).
+        if (decoraciones != null)
         {
-            Destroy(tile);
+            foreach (GameObject decoracion in decoraciones)
+            {
+                if (decoracion != null)
+                {
+                    Destroy(decoracion);
+                }
+            }
         }
-        tileObjects.Clear();
 
         int size = data.size;
         tamanoActual = size;
-        tiles = new Renderer[size * size];
+        decoraciones = new GameObject[size * size];
+
+        int contadorCultivo = 0;
+        int contadorObstaculo = 0;
+        int contadorDecoracionesCreadas = 0;
 
         for (int fila = 0; fila < size; fila++)
         {
             for (int columna = 0; columna < size; columna++)
             {
-                Vector3 pos = new Vector3(fila, 0.1f, columna);
-
-                GameObject tile = Instantiate(
-                    tilePrefab, pos, Quaternion.identity, transform
-                );
-                tile.name = $"Tile_{fila}_{columna}";
-                tileObjects.Add(tile);
-
                 int indice = fila * size + columna;
-                Renderer renderer = tile.GetComponent<Renderer>();
-                tiles[indice] = renderer;
+                Vector3 pos = new Vector3(fila, 0f, columna);
+                int tipo = data.terreno[indice];
 
-                PintarTile(renderer, data.terreno[indice]);
+                if (tipo == 1) contadorCultivo++;
+                if (tipo == 2) contadorObstaculo++;
+
+                ActualizarDecoracion(indice, pos, tipo);
+
+                if (decoraciones[indice] != null) contadorDecoracionesCreadas++;
             }
         }
+
+        Debug.Log(
+            $"[DIAGNOSTICO] Terreno reconstruido: cultivo={contadorCultivo} " +
+            $"obstaculo={contadorObstaculo} decoracionesCreadas={contadorDecoracionesCreadas} " +
+            $"(cultivoPrefab asignado={cultivoPrefab != null}, " +
+            $"obstaculoPrefabs asignados={obstaculoPrefabs != null && obstaculoPrefabs.Length > 0})"
+        );
 
         // Silo
         if (siloPrefab != null)
@@ -244,7 +277,7 @@ public class WebSocketManager : MonoBehaviour
 
     void AplicarCeldasCambiadas(CeldaCambiada[] celdas)
     {
-        if (tiles == null || tamanoActual <= 0)
+        if (decoraciones == null || tamanoActual <= 0)
         {
             return;
         }
@@ -253,32 +286,41 @@ public class WebSocketManager : MonoBehaviour
         {
             int indice = celda.x * tamanoActual + celda.z;
 
-            if (indice >= 0 && indice < tiles.Length && tiles[indice] != null)
+            if (indice >= 0 && indice < decoraciones.Length)
             {
-                PintarTile(tiles[indice], celda.tipo);
+                Vector3 pos = new Vector3(celda.x, 0f, celda.z);
+                ActualizarDecoracion(indice, pos, celda.tipo);
             }
         }
     }
 
-    void PintarTile(Renderer renderer, int tipo)
+    // Coloca (o quita) la decoracion de una celda: un prefab
+    // especifico para cultivo, uno elegido al azar de la lista
+    // para obstaculo, o nada si esta vacia (queda solo el Plane
+    // de la escena, sin ningun objeto encima).
+    void ActualizarDecoracion(int indice, Vector3 pos, int tipo)
     {
-        if (renderer == null)
+        if (decoraciones[indice] != null)
         {
-            return;
+            Destroy(decoraciones[indice]);
+            decoraciones[indice] = null;
         }
 
         // 0 = vacio, 1 = cultivo, 2 = obstaculo
-        if (tipo == 1)
+        if (tipo == 1 && cultivoPrefab != null)
         {
-            renderer.material.color = colorCultivo;
+            decoraciones[indice] = Instantiate(
+                cultivoPrefab, pos, Quaternion.identity, transform
+            );
         }
-        else if (tipo == 2)
+        else if (tipo == 2 && obstaculoPrefabs != null && obstaculoPrefabs.Length > 0)
         {
-            renderer.material.color = colorObstaculo;
-        }
-        else
-        {
-            renderer.material.color = colorVacio;
+            GameObject elegido = obstaculoPrefabs[
+                UnityEngine.Random.Range(0, obstaculoPrefabs.Length)
+            ];
+            decoraciones[indice] = Instantiate(
+                elegido, pos, Quaternion.identity, transform
+            );
         }
     }
 
@@ -306,6 +348,8 @@ public class WebSocketManager : MonoBehaviour
                     objeto = nuevoAgente,
                     posInicial = nuevaPos,
                     posObjetivo = nuevaPos,
+                    rotInicial = nuevoAgente.transform.rotation,
+                    rotObjetivo = nuevoAgente.transform.rotation,
                     tiempoInicio = Time.time
                 };
 
@@ -319,6 +363,34 @@ public class WebSocketManager : MonoBehaviour
             // desde el ultimo objetivo) para que la interpolacion
             // no de un salto si el mensaje anterior no termino.
             av.posInicial = av.objeto.transform.position;
+            av.rotInicial = av.objeto.transform.rotation;
+
+            // Si de verdad se movio, giramos el prefab al angulo
+            // que configuraste para esa direccion (arriba, en el
+            // Inspector). Si no se movio (esta esperando, cargando
+            // gasolina, etc), se queda mirando hacia donde ya
+            // estaba mirando.
+            Vector3 direccion = nuevaPos - av.posInicial;
+
+            if (direccion.sqrMagnitude > 0.0001f)
+            {
+                float angulo;
+
+                // Se mueve mas en X que en Z: fue un paso
+                // arriba/abajo (fila). Si no, fue izquierda/
+                // derecha (columna).
+                if (Mathf.Abs(direccion.x) > Mathf.Abs(direccion.z))
+                {
+                    angulo = direccion.x > 0f ? anguloMovXPositivo : anguloMovXNegativo;
+                }
+                else
+                {
+                    angulo = direccion.z > 0f ? anguloMovZPositivo : anguloMovZNegativo;
+                }
+
+                av.rotObjetivo = Quaternion.Euler(0f, angulo, 0f);
+            }
+
             av.posObjetivo = nuevaPos;
             av.tiempoInicio = Time.time;
 
@@ -343,6 +415,10 @@ public class WebSocketManager : MonoBehaviour
 
             av.objeto.transform.position = Vector3.Lerp(
                 av.posInicial, av.posObjetivo, t
+            );
+
+            av.objeto.transform.rotation = Quaternion.Slerp(
+                av.rotInicial, av.rotObjetivo, t
             );
         }
     }
@@ -450,6 +526,13 @@ public class WebSocketManager : MonoBehaviour
 
     public void ResetSimulation()
     {
+        // Primero limpiamos el terreno que se ve ahorita, para
+        // que desaparezca de inmediato al picarle al boton (sin
+        // esperar a que llegue el campo nuevo). Cuando llegue el
+        // siguiente mensaje con el terreno fresco, ReconstruirTerreno
+        // lo vuelve a construir desde cero.
+        LimpiarTerrenoVisual();
+
         int size = LeerEntero(inputSize, 25);
         int cosechadoras = LeerEntero(inputCosechadoras, 3);
         int tractores = LeerEntero(inputTractores, 2);
@@ -464,6 +547,25 @@ public class WebSocketManager : MonoBehaviour
             "}}";
 
         EnviarComando(json);
+    }
+
+    void LimpiarTerrenoVisual()
+    {
+        if (decoraciones != null)
+        {
+            foreach (GameObject decoracion in decoraciones)
+            {
+                if (decoracion != null)
+                {
+                    Destroy(decoracion);
+                }
+            }
+        }
+
+        decoraciones = null;
+        tamanoActual = -1;
+
+        Debug.Log("[DIAGNOSTICO] Terreno visual limpiado por el boton de Reset");
     }
 
     int LeerEntero(TMP_InputField campo, int porDefecto)

@@ -12684,11 +12684,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WebSocketManager
   cosechadoraPrefab: {fileID: 7521767085060430946, guid: d27436b24b359440194e240c6f92bb23, type: 3}
   tractorPrefab: {fileID: 5930296341253710666, guid: 9339ed3e9f2844d13906a47a09c92efd, type: 3}
-  tilePrefab: {fileID: 7010229594305943177, guid: 112f38874ec304d4aa973aea7dcfc0c0, type: 3}
   siloPrefab: {fileID: 0}
-  colorVacio: {r: 0.87, g: 0.83, b: 0.69, a: 1}
-  colorCultivo: {r: 0.29, g: 0.69, b: 0.31, a: 1}
-  colorObstaculo: {r: 0.36, g: 0.23, b: 0.13, a: 1}
+  cultivoPrefab: {fileID: 2919052627280586676, guid: 1187d89a98e3e87499d6dca3df438e50, type: 3}
+  obstaculoPrefabs:
+  - {fileID: 4015883230209106634, guid: bfdd05195cbcf4dce860848684af6639, type: 3}
+  - {fileID: 6270978406318446195, guid: 97547e1c66076458699e1e408dd7e0c1, type: 3}
+  - {fileID: 2383098668547343578, guid: 613d076cd9c4740b38db30e4267bb28f, type: 3}
+  anguloMovXPositivo: 0
+  anguloMovXNegativo: 180
+  anguloMovZPositivo: 90
+  anguloMovZNegativo: 270
   statusText: {fileID: 1815621464}
   agentCountText: {fileID: 241371263}
   pauseButtonText: {fileID: 2036591367}
