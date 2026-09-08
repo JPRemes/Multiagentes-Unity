@@ -109,6 +109,38 @@ public class WebSocketManager : MonoBehaviour
     public TMP_InputField inputTractores;
     public TMP_InputField inputObstaculo;
 
+    [Header("Escenario / Fondo")]
+    [Tooltip("El objeto vacío que contiene todos los assets de fondo")]
+    public Transform escenarioFondo;
+
+    [Tooltip("El tamaño de grid (size) para el cual el fondo fue diseñado originalmente")]
+    public int tamanoDisenoFondo = 25;
+
+    [Tooltip("Si el pivote del fondo está en una esquina en vez de en el centro, actívalo")]
+    public bool pivoteEnEsquina = false;
+
+    [Header("Camaras")]
+    public Transform camara1;
+    public Transform camaraTop;
+
+    [Tooltip("Tamaño de grid para el cual quedaron bien posicionadas las camaras en la escena")]
+    public int tamanoDisenoCamaras = 25;
+
+    [Tooltip("Altura (Y) que tiene cada camara cuando el grid es tamanoDisenoCamaras")]
+    private float alturaCamara1Base = 30f;
+    private float alturaCamaraTopBase = 30f;
+
+    [Header("Camara POV (se pega a una cosechadora)")]
+    public Transform camaraPOV;
+
+    [Tooltip("Posicion local de la camara relativa a la cosechadora (arriba y atras, por ejemplo)")]
+    public Vector3 offsetPOV = new Vector3(0f, 1.2f, -1.5f);
+
+    [Tooltip("Rotacion local de la camara relativa a la cosechadora")]
+    public Vector3 rotacionOffsetPOV = Vector3.zero;
+
+    private string idAgentePOV = null;   // id de la cosechadora que está siguiendo
+
     // ------------------------------------------------------
     // Estado interno
     // ------------------------------------------------------
@@ -127,6 +159,9 @@ public class WebSocketManager : MonoBehaviour
 
     async void Start()
     {
+        if (camara1 != null) alturaCamara1Base = camara1.position.y;
+        if (camaraTop != null) alturaCamaraTopBase = camaraTop.position.y;
+
         statusText.text = "Estado: Conectando...";
         agentCountText.text = "Agentes: 0";
 
@@ -199,6 +234,7 @@ public class WebSocketManager : MonoBehaviour
 
         UpdateAgents(data);
         RemoveMissingAgents(data);
+        AsignarCamaraPOV(data); 
         UpdateInterface(data);
     }
 
@@ -230,6 +266,9 @@ public class WebSocketManager : MonoBehaviour
         int size = data.size;
         tamanoActual = size;
         decoraciones = new GameObject[size * size];
+
+        AjustarEscenario(size);
+        AjustarCamaras(size);    
 
         int contadorCultivo = 0;
         int contadorObstaculo = 0;
@@ -322,6 +361,100 @@ public class WebSocketManager : MonoBehaviour
                 elegido, pos, Quaternion.identity, transform
             );
         }
+    }
+
+    void AjustarEscenario(int size)
+    {
+        if (escenarioFondo == null || tamanoDisenoFondo <= 0)
+        {
+            return;
+        }
+
+        float factor = (float)size / tamanoDisenoFondo;
+        escenarioFondo.localScale = new Vector3(factor, 1f, factor);
+
+        if (pivoteEnEsquina)
+        {
+            // Si el fondo crece desde una esquina, no hace falta
+            // reposicionar nada extra.
+            escenarioFondo.position = Vector3.zero;
+        }
+        else
+        {
+            // Si el pivote está en el centro del fondo, hay que
+            // recentrarlo para que siga alineado con el grid,
+            // que va de (0,0) a (size-1, size-1).
+            float centro = (size - 1) / 2f;
+            escenarioFondo.position = new Vector3(centro, 0f, centro);
+        }
+    }
+
+    void AjustarCamaras(int size)
+    {
+        if (tamanoDisenoCamaras <= 0)
+        {
+            return;
+        }
+
+        float factor = (float)size / tamanoDisenoCamaras;
+
+        if (camara1 != null)
+        {
+            Vector3 pos = camara1.position;
+            pos.y = alturaCamara1Base * factor;
+            camara1.position = pos;
+        }
+
+        if (camaraTop != null)
+        {
+            // Centro del grid: las celdas van de (0,0) a (size-1, size-1),
+            // igual que en AjustarEscenario.
+            float centro = (size - 1) / 2f;
+
+            Vector3 pos = camaraTop.position;
+            pos.x = centro;
+            pos.y = alturaCamaraTopBase * factor;
+            pos.z = centro;
+            camaraTop.position = pos;
+        }
+    }
+
+    void AsignarCamaraPOV(SimulationData data)
+    {
+        if (camaraPOV == null)
+        {
+            return;
+        }
+
+        // Si ya tenemos un agente asignado, revisamos que siga existiendo
+        bool sigueExistiendo = idAgentePOV != null && agentes.ContainsKey(idAgentePOV);
+
+        if (sigueExistiendo)
+        {
+            return; // todo bien, sigue pegada a la misma cosechadora
+        }
+
+        // Buscar la primera cosechadora disponible en el estado actual
+        foreach (AgentData agentData in data.agentes)
+        {
+            if (agentData.tipo == "cosechadora")
+            {
+                idAgentePOV = agentData.id;
+                PegarCamaraA(agentes[agentData.id].objeto);
+                Debug.Log("Camara POV asignada a: " + idAgentePOV);
+                return;
+            }
+        }
+
+        // No hay ninguna cosechadora disponible
+        idAgentePOV = null;
+    }
+
+    void PegarCamaraA(GameObject objetoAgente)
+    {
+        camaraPOV.SetParent(objetoAgente.transform);
+        camaraPOV.localPosition = offsetPOV;
+        camaraPOV.localRotation = Quaternion.Euler(rotacionOffsetPOV);
     }
 
     // ------------------------------------------------------

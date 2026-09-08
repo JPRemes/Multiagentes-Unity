@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 9192131088533453492}
   - component: {fileID: 1817670531441919358}
   m_Layer: 0
-  m_Name: cosechadora
+  m_Name: Cosechadora
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
