@@ -90,6 +90,16 @@ public class WebSocketManager : MonoBehaviour
     // para que no se vea todo repetido.
     public GameObject[] obstaculoPrefabs;
 
+    [Tooltip("Prefab de tierra que se coloca debajo de cada celda del terreno al cargarlo")]
+    public GameObject tierraPrefab;
+
+    [Tooltip("Altura (Y) a la que se coloca la tierra. Si queda igual que el Plane del fondo, se ven mezclados (z-fighting)")]
+    public float alturaTierra = 0.02f;
+
+    [Header("Posicion de los agentes")]
+    [Tooltip("Altura (Y) a la que se colocan los agentes. Si vuelan, bajala a 0")]
+    public float alturaAgentes = 0f;
+
     [Header("Rotacion de los agentes al moverse (grados en Y)")]
     [Tooltip("Hacia donde debe mirar el prefab cuando se mueve hacia X positivo (la fila aumenta)")]
     public float anguloMovXPositivo = 0f;
@@ -109,6 +119,12 @@ public class WebSocketManager : MonoBehaviour
     public TMP_InputField inputTractores;
     public TMP_InputField inputObstaculo;
 
+    [Header("Interfaz POV")]
+    [Tooltip("Texto que muestra a que cosechadora esta siguiendo la camara POV")]
+    public TMP_Text povCosechadoraText;
+    [Tooltip("Texto que muestra a que tractor esta siguiendo la camara POV")]
+    public TMP_Text povTractorText;
+
     [Header("Escenario / Fondo")]
     [Tooltip("El objeto vacío que contiene todos los assets de fondo")]
     public Transform escenarioFondo;
@@ -123,10 +139,15 @@ public class WebSocketManager : MonoBehaviour
     public Transform camaraISO;
     public Transform camaraTop;
 
-    [Tooltip("Tamaño de grid para el cual quedaron bien posicionadas las camaras en la escena")]
+    [Tooltip("Tamaño de grid para el cual estan calibrados los valores de esta seccion. Al cambiar el tamaño del terreno, las camaras se reescalan tomando esto como referencia")]
     public int tamanoDisenoCamaras = 25;
 
-    [Tooltip("Altura (Y) que tiene cada camara cuando el grid es tamanoDisenoCamaras")]
+    [Tooltip("Offset (X,Y,Z) de la camara ISO respecto al centro del grid, para cuando el grid mide tamanoDisenoCamaras. Dejalo en (0,0,0) para calcularlo automaticamente desde la posicion de la camara en la escena")]
+    public Vector3 offsetCamaraISODiseno = Vector3.zero;
+
+    [Tooltip("Altura (Y) de la camara Top, para cuando el grid mide tamanoDisenoCamaras. Dejalo en 0 para calcularla automaticamente desde la posicion de la camara en la escena")]
+    public float alturaCamaraTopDiseno = 0f;
+
     private float alturaCamaraTopBase = 30f;
     private Vector3 offsetCamaraISO;
 
@@ -154,9 +175,12 @@ public class WebSocketManager : MonoBehaviour
         new Dictionary<string, AgenteVisual>();
 
     private GameObject[] decoraciones;        // decoracion actual de cada celda (o null)
+    private GameObject[] sueloDecoraciones;   // parche de tierra bajo cada celda, uno por celda al cargar el terreno
     private int tamanoActual = -1;
     private float tickActual = 0.25f;
+    private float tiempoUltimoMensaje = -1f;   // Time.time del ultimo estado recibido, para medir el intervalo real
     private GameObject siloInstancia;
+    private AgentData[] ultimosAgentesRecibidos;   // ultima lista de agentes recibida del servidor
 
     // ------------------------------------------------------
     // Conexion
@@ -166,11 +190,24 @@ public class WebSocketManager : MonoBehaviour
     {
         if (camaraISO != null)
         {
-            float centroInicial = (tamanoDisenoCamaras - 1) / 2f;
-            Vector3 centroGridInicial = new Vector3(centroInicial, 0f, centroInicial);
-            offsetCamaraISO = camaraISO.position - centroGridInicial;
+            if (offsetCamaraISODiseno != Vector3.zero)
+            {
+                offsetCamaraISO = offsetCamaraISODiseno;
+            }
+            else
+            {
+                float centroInicial = (tamanoDisenoCamaras - 1) / 2f;
+                Vector3 centroGridInicial = new Vector3(centroInicial, 0f, centroInicial);
+                offsetCamaraISO = camaraISO.position - centroGridInicial;
+            }
         }
-        if (camaraTop != null) alturaCamaraTopBase = camaraTop.position.y;
+
+        if (camaraTop != null)
+        {
+            alturaCamaraTopBase = alturaCamaraTopDiseno > 0f
+                ? alturaCamaraTopDiseno
+                : camaraTop.position.y;
+        }
 
         statusText.text = "Estado: Conectando...";
         agentCountText.text = "Agentes: 0";
@@ -230,7 +267,28 @@ public class WebSocketManager : MonoBehaviour
             return;
         }
 
-        tickActual = data.tick > 0f ? data.tick : tickActual;
+        // Usamos el tiempo real transcurrido desde el mensaje anterior
+        // para la interpolacion, en vez de confiar ciegamente en
+        // "data.tick": si el servidor manda estados mas seguido de lo
+        // que dice su propio tick, el visual se va atrasando cada vez
+        // mas respecto a la posicion real que reporta el servidor.
+        float ahora = Time.time;
+
+        if (tiempoUltimoMensaje > 0f)
+        {
+            float intervaloReal = ahora - tiempoUltimoMensaje;
+
+            if (intervaloReal > 0.01f)
+            {
+                tickActual = intervaloReal;
+            }
+        }
+        else if (data.tick > 0f)
+        {
+            tickActual = data.tick;
+        }
+
+        tiempoUltimoMensaje = ahora;
 
         if (data.terreno != null && data.terreno.Length > 0)
         {
@@ -245,7 +303,8 @@ public class WebSocketManager : MonoBehaviour
         UpdateAgents(data);
         fuelBarChartManager?.ActualizarDesdeEstado(data);
         RemoveMissingAgents(data);
-        AsignarCamaraPOVCosechadora(data); 
+        ultimosAgentesRecibidos = data.agentes;
+        AsignarCamaraPOVCosechadora(data);
         AsignarCamaraPOVTractor(data);
         UpdateInterface(data);
     }
@@ -275,9 +334,21 @@ public class WebSocketManager : MonoBehaviour
             }
         }
 
+        if (sueloDecoraciones != null)
+        {
+            foreach (GameObject suelo in sueloDecoraciones)
+            {
+                if (suelo != null)
+                {
+                    Destroy(suelo);
+                }
+            }
+        }
+
         int size = data.size;
         tamanoActual = size;
         decoraciones = new GameObject[size * size];
+        sueloDecoraciones = new GameObject[size * size];
 
         AjustarEscenario(size);
         AjustarCamaras(size);    
@@ -291,13 +362,21 @@ public class WebSocketManager : MonoBehaviour
             for (int columna = 0; columna < size; columna++)
             {
                 int indice = fila * size + columna;
-                Vector3 pos = new Vector3(fila, 0f, columna);
+                Vector3 pos = new Vector3(fila, 0.001f, columna);
                 int tipo = data.terreno[indice];
 
                 if (tipo == 1) contadorCultivo++;
                 if (tipo == 2) contadorObstaculo++;
 
                 ActualizarDecoracion(indice, pos, tipo);
+
+                if (tierraPrefab != null)
+                {
+                    Vector3 posSuelo = new Vector3(fila, alturaTierra, columna);
+                    sueloDecoraciones[indice] = Instantiate(
+                        tierraPrefab, posSuelo, Quaternion.identity, transform
+                    );
+                }
 
                 if (decoraciones[indice] != null) contadorDecoracionesCreadas++;
             }
@@ -452,7 +531,7 @@ public class WebSocketManager : MonoBehaviour
             if (agentData.tipo == "cosechadora")
             {
                 idAgentePOVCosechadora = agentData.id;
-                PegarCamaraA(agentes[agentData.id].objeto, camaraPOVCosechadora);
+                PegarCamaraA(agentes[agentData.id].objeto, camaraPOVCosechadora, povCosechadoraText, agentData.id);
                 Debug.Log("Camara POV asignada a: " + idAgentePOVCosechadora);
                 return;
             }
@@ -460,6 +539,7 @@ public class WebSocketManager : MonoBehaviour
 
         // No hay ninguna cosechadora disponible
         idAgentePOVCosechadora = null;
+        ActualizarTextoPOV(povCosechadoraText, null);
     }
 
     void AsignarCamaraPOVTractor(SimulationData data)
@@ -470,34 +550,94 @@ public class WebSocketManager : MonoBehaviour
         }
 
         // Si ya tenemos un agente asignado, revisamos que siga existiendo
-        bool sigueExistiendo = idAgentePOVTractor != null && agentes.ContainsKey(idAgentePOVCosechadora);
+        bool sigueExistiendo = idAgentePOVTractor != null && agentes.ContainsKey(idAgentePOVTractor);
 
         if (sigueExistiendo)
         {
-            return; // todo bien, sigue pegada a la misma cosechadora
+            return; // todo bien, sigue pegada al mismo tractor
         }
 
-        // Buscar la primera cosechadora disponible en el estado actual
+        // Buscar el primer tractor disponible en el estado actual
         foreach (AgentData agentData in data.agentes)
         {
             if (agentData.tipo == "tractor")
             {
                 idAgentePOVTractor = agentData.id;
-                PegarCamaraA(agentes[agentData.id].objeto, camaraPOVTractor);
+                PegarCamaraA(agentes[agentData.id].objeto, camaraPOVTractor, povTractorText, agentData.id);
                 Debug.Log("Camara POV asignada a: " + idAgentePOVTractor);
                 return;
             }
         }
 
-        // No hay ninguna cosechadora disponible
+        // No hay ningun tractor disponible
         idAgentePOVTractor = null;
+        ActualizarTextoPOV(povTractorText, null);
     }
 
-    void PegarCamaraA(GameObject objetoAgente, Transform camara)
+    void PegarCamaraA(GameObject objetoAgente, Transform camara, TMP_Text texto, string idAgente)
     {
         camara.SetParent(objetoAgente.transform);
         camara.localPosition = offsetPOV;
         camara.localRotation = Quaternion.Euler(rotacionOffsetPOV);
+        ActualizarTextoPOV(texto, idAgente);
+    }
+
+    // Muestra en el texto de la UI a que agente esta pegada la
+    // camara POV (o lo deja vacio si no hay ninguno).
+    void ActualizarTextoPOV(TMP_Text texto, string idAgente)
+    {
+        if (texto == null)
+        {
+            return;
+        }
+
+        texto.text = idAgente != null ? ("POV: " + idAgente) : "POV: -";
+    }
+
+    // Conectar estos metodos al OnClick() de los botones en el
+    // Inspector para pasar al siguiente agente de cada tipo.
+    public void SiguientePOVCosechadora()
+    {
+        SiguienteAgentePOV("cosechadora", ref idAgentePOVCosechadora, camaraPOVCosechadora, povCosechadoraText);
+    }
+
+    public void SiguientePOVTractor()
+    {
+        SiguienteAgentePOV("tractor", ref idAgentePOVTractor, camaraPOVTractor, povTractorText);
+    }
+
+    // Busca, dentro del ultimo estado recibido, todos los agentes
+    // del tipo pedido y pasa al siguiente (en orden, dando la
+    // vuelta al llegar al final). Si no hay ninguno, no hace nada.
+    void SiguienteAgentePOV(string tipo, ref string idActual, Transform camara, TMP_Text texto)
+    {
+        if (camara == null || ultimosAgentesRecibidos == null)
+        {
+            return;
+        }
+
+        List<string> idsDelTipo = new List<string>();
+
+        foreach (AgentData agentData in ultimosAgentesRecibidos)
+        {
+            if (agentData.tipo == tipo && agentes.ContainsKey(agentData.id))
+            {
+                idsDelTipo.Add(agentData.id);
+            }
+        }
+
+        if (idsDelTipo.Count == 0)
+        {
+            return;
+        }
+
+        int indiceActual = idActual != null ? idsDelTipo.IndexOf(idActual) : -1;
+        int siguienteIndice = (indiceActual + 1) % idsDelTipo.Count;
+        string siguienteId = idsDelTipo[siguienteIndice];
+
+        idActual = siguienteId;
+        PegarCamaraA(agentes[siguienteId].objeto, camara, texto, siguienteId);
+        Debug.Log("Camara POV cambiada a: " + siguienteId);
     }
 
     // ------------------------------------------------------
@@ -508,7 +648,7 @@ public class WebSocketManager : MonoBehaviour
     {
         foreach (AgentData agentData in data.agentes)
         {
-            Vector3 nuevaPos = new Vector3(agentData.x, 0.5f, agentData.z);
+            Vector3 nuevaPos = new Vector3(agentData.x, alturaAgentes, agentData.z);
 
             if (!agentes.ContainsKey(agentData.id))
             {
@@ -647,10 +787,38 @@ public class WebSocketManager : MonoBehaviour
 
         foreach (string id in idsAEliminar)
         {
+            // Si la camara POV esta pegada a este agente, la
+            // desprendemos antes de destruirlo. Si no, al ser
+            // hija de su transform, Unity la destruiria junto
+            // con el agente y se perderia para siempre.
+            if (id == idAgentePOVCosechadora)
+            {
+                DespegarCamara(camaraPOVCosechadora);
+                idAgentePOVCosechadora = null;
+                ActualizarTextoPOV(povCosechadoraText, null);
+            }
+
+            if (id == idAgentePOVTractor)
+            {
+                DespegarCamara(camaraPOVTractor);
+                idAgentePOVTractor = null;
+                ActualizarTextoPOV(povTractorText, null);
+            }
+
             Destroy(agentes[id].objeto);
             agentes.Remove(id);
             Debug.Log("Agente eliminado: " + id);
         }
+    }
+
+    void DespegarCamara(Transform camara)
+    {
+        if (camara == null)
+        {
+            return;
+        }
+
+        camara.SetParent(null);
     }
 
     // ------------------------------------------------------
@@ -739,7 +907,19 @@ public class WebSocketManager : MonoBehaviour
             }
         }
 
+        if (sueloDecoraciones != null)
+        {
+            foreach (GameObject suelo in sueloDecoraciones)
+            {
+                if (suelo != null)
+                {
+                    Destroy(suelo);
+                }
+            }
+        }
+
         decoraciones = null;
+        sueloDecoraciones = null;
         tamanoActual = -1;
 
         Debug.Log("[DIAGNOSTICO] Terreno visual limpiado por el boton de Reset");

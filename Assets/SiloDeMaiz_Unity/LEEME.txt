@@ -1,0 +1,30 @@
+SILO DE MAIZ - modelo 3D para Unity
+====================================
+
+Contenido:
+- SiloDeMaiz.obj      -> geometria (malla)
+- SiloDeMaiz.mtl      -> definicion de materiales
+- Textures/           -> texturas de chapa corrugada (galvanizada y oxidada)
+
+Como importarlo en Unity:
+1. Copia toda la carpeta "SiloDeMaiz_Unity" dentro de tu carpeta Assets
+   (por ejemplo Assets/Models/SiloDeMaiz).
+2. Unity detecta el .obj automaticamente y genera un Prefab/Modelo.
+   Arrastralo a la escena.
+3. El importador de OBJ de Unity no siempre trae las texturas ya
+   enlazadas. Si el modelo aparece sin textura:
+   - Selecciona los materiales generados (metal_galv, metal_rust, etc.)
+     dentro de la carpeta importada.
+   - En el Inspector, arrastra la textura correspondiente de
+     Textures/ al campo "Albedo".
+     - metal_galv  -> chapa_galvanizada.png (cuerpo del silo)
+     - metal_rust  -> chapa_oxidada.png (techo)
+     - metal_dark, metal_light, concrete -> son colores solidos,
+       no necesitan textura (pero puedes ajustarlos a tu gusto).
+4. Escala: el modelo esta en metros reales (silo de ~11.5 m de alto,
+   6 m de diametro). Si se ve gigante o diminuto, ajusta el Scale
+   Factor en el importador de modelos (normalmente 1).
+
+El objeto incluye: cuerpo corrugado, techo conico con costuras,
+anillos de refuerzo, escalera lateral, puerta, tubo de descarga
+y base de concreto.
