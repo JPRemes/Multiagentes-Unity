@@ -131,7 +131,8 @@ public class WebSocketManager : MonoBehaviour
     private float alturaCamaraTopBase = 30f;
 
     [Header("Camara POV (se pega a una cosechadora)")]
-    public Transform camaraPOV;
+    public Transform camaraPOVCosechadora;
+    public Transform camaraPOVTractor;
 
     [Tooltip("Posicion local de la camara relativa a la cosechadora (arriba y atras, por ejemplo)")]
     public Vector3 offsetPOV = new Vector3(0f, 1.2f, -1.5f);
@@ -139,7 +140,11 @@ public class WebSocketManager : MonoBehaviour
     [Tooltip("Rotacion local de la camara relativa a la cosechadora")]
     public Vector3 rotacionOffsetPOV = Vector3.zero;
 
-    private string idAgentePOV = null;   // id de la cosechadora que está siguiendo
+    [Header("Graficos")]
+    public FuelBarChartManager fuelBarChartManager;
+
+    private string idAgentePOVCosechadora = null;   // id de la cosechadora que está siguiendo
+    private string idAgentePOVTractor = null;   // id del tractor que está siguiendo
 
     // ------------------------------------------------------
     // Estado interno
@@ -233,8 +238,10 @@ public class WebSocketManager : MonoBehaviour
         }
 
         UpdateAgents(data);
+        fuelBarChartManager?.ActualizarDesdeEstado(data);
         RemoveMissingAgents(data);
-        AsignarCamaraPOV(data); 
+        AsignarCamaraPOVCosechadora(data); 
+        AsignarCamaraPOVTractor(data);
         UpdateInterface(data);
     }
 
@@ -419,15 +426,15 @@ public class WebSocketManager : MonoBehaviour
         }
     }
 
-    void AsignarCamaraPOV(SimulationData data)
+    void AsignarCamaraPOVCosechadora(SimulationData data)
     {
-        if (camaraPOV == null)
+        if (camaraPOVCosechadora == null)
         {
             return;
         }
 
         // Si ya tenemos un agente asignado, revisamos que siga existiendo
-        bool sigueExistiendo = idAgentePOV != null && agentes.ContainsKey(idAgentePOV);
+        bool sigueExistiendo = idAgentePOVCosechadora != null && agentes.ContainsKey(idAgentePOVCosechadora);
 
         if (sigueExistiendo)
         {
@@ -439,22 +446,53 @@ public class WebSocketManager : MonoBehaviour
         {
             if (agentData.tipo == "cosechadora")
             {
-                idAgentePOV = agentData.id;
-                PegarCamaraA(agentes[agentData.id].objeto);
-                Debug.Log("Camara POV asignada a: " + idAgentePOV);
+                idAgentePOVCosechadora = agentData.id;
+                PegarCamaraA(agentes[agentData.id].objeto, camaraPOVCosechadora);
+                Debug.Log("Camara POV asignada a: " + idAgentePOVCosechadora);
                 return;
             }
         }
 
         // No hay ninguna cosechadora disponible
-        idAgentePOV = null;
+        idAgentePOVCosechadora = null;
     }
 
-    void PegarCamaraA(GameObject objetoAgente)
+    void AsignarCamaraPOVTractor(SimulationData data)
     {
-        camaraPOV.SetParent(objetoAgente.transform);
-        camaraPOV.localPosition = offsetPOV;
-        camaraPOV.localRotation = Quaternion.Euler(rotacionOffsetPOV);
+        if (camaraPOVTractor == null)
+        {
+            return;
+        }
+
+        // Si ya tenemos un agente asignado, revisamos que siga existiendo
+        bool sigueExistiendo = idAgentePOVTractor != null && agentes.ContainsKey(idAgentePOVCosechadora);
+
+        if (sigueExistiendo)
+        {
+            return; // todo bien, sigue pegada a la misma cosechadora
+        }
+
+        // Buscar la primera cosechadora disponible en el estado actual
+        foreach (AgentData agentData in data.agentes)
+        {
+            if (agentData.tipo == "tractor")
+            {
+                idAgentePOVTractor = agentData.id;
+                PegarCamaraA(agentes[agentData.id].objeto, camaraPOVTractor);
+                Debug.Log("Camara POV asignada a: " + idAgentePOVTractor);
+                return;
+            }
+        }
+
+        // No hay ninguna cosechadora disponible
+        idAgentePOVTractor = null;
+    }
+
+    void PegarCamaraA(GameObject objetoAgente, Transform camara)
+    {
+        camara.SetParent(objetoAgente.transform);
+        camara.localPosition = offsetPOV;
+        camara.localRotation = Quaternion.Euler(rotacionOffsetPOV);
     }
 
     // ------------------------------------------------------
@@ -665,6 +703,7 @@ public class WebSocketManager : MonoBehaviour
         // siguiente mensaje con el terreno fresco, ReconstruirTerreno
         // lo vuelve a construir desde cero.
         LimpiarTerrenoVisual();
+        fuelBarChartManager?.LimpiarTodo();
 
         int size = LeerEntero(inputSize, 25);
         int cosechadoras = LeerEntero(inputCosechadoras, 3);
