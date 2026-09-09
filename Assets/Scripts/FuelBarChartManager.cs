@@ -1,23 +1,21 @@
 using System.Collections.Generic;
 using UnityEngine;
-
-// ============================================================
-// Administra la grafica de barras de combustible: una fila por
-// agente (cosechadora o tractor). Se alimenta directamente del
-// mismo SimulationData que ya procesa WebSocketManager, asi que
-// no necesita su propia conexion ni logica de parseo.
-// ============================================================
+using UnityEngine.UI;
 
 public class FuelBarChartManager : MonoBehaviour
 {
-    [Header("Prefab de una fila ")]
+    [Header("Prefab de una fila (debe traer el componente AgentFuelRowUI)")]
     public AgentFuelRowUI filaPrefab;
 
-    [Header("Contenedor de filas")]
+    [Header("Contenedor donde se instancian las filas (con un Vertical Layout Group)")]
     public RectTransform contenedor;
 
-    [Header("Ancho de barra llena")]
+    [Header("Ancho en pixeles que representa el tanque lleno (100%)")]
     public float maxBarWidth = 200f;
+
+    [Header("Altura de cada fila")]
+    public float alturaMinima = 24f;
+    public float alturaMaxima = 48f;
 
     private readonly Dictionary<string, AgentFuelRowUI> filas =
         new Dictionary<string, AgentFuelRowUI>();
@@ -33,6 +31,7 @@ public class FuelBarChartManager : MonoBehaviour
         }
 
         HashSet<string> idsVistos = new HashSet<string>();
+        bool cambioLaCantidad = false;
 
         foreach (AgentData agente in data.agentes)
         {
@@ -43,6 +42,7 @@ public class FuelBarChartManager : MonoBehaviour
                 fila = Instantiate(filaPrefab, contenedor);
                 fila.Configure(NombreVisible(agente), maxBarWidth);
                 filas.Add(agente.id, fila);
+                cambioLaCantidad = true;
             }
 
             fila.UpdateValues(agente.combustible, agente.combustible_maximo);
@@ -64,6 +64,48 @@ public class FuelBarChartManager : MonoBehaviour
         {
             Destroy(filas[id].gameObject);
             filas.Remove(id);
+            cambioLaCantidad = true;
+        }
+
+        if (cambioLaCantidad)
+        {
+            RecalcularAlturas();
+        }
+    }
+
+    // Calcula cuanto le toca de alto a cada fila para llenar el
+    // contenedor SIN pasarse de alturaMaxima ni bajar de
+    // alturaMinima, tomando en cuenta el spacing y el padding
+    // que tenga configurado el Vertical Layout Group.
+    private void RecalcularAlturas()
+    {
+        if (filas.Count == 0)
+        {
+            return;
+        }
+
+        float spacing = 0f;
+        float paddingVertical = 0f;
+
+        VerticalLayoutGroup vlg = contenedor.GetComponent<VerticalLayoutGroup>();
+
+        if (vlg != null)
+        {
+            spacing = vlg.spacing;
+            paddingVertical = vlg.padding.top + vlg.padding.bottom;
+        }
+
+        float alturaDisponible =
+            contenedor.rect.height
+            - paddingVertical
+            - spacing * (filas.Count - 1);
+
+        float alturaPorFila = alturaDisponible / filas.Count;
+        alturaPorFila = Mathf.Clamp(alturaPorFila, alturaMinima, alturaMaxima);
+
+        foreach (AgentFuelRowUI fila in filas.Values)
+        {
+            fila.SetAlturaPreferida(alturaPorFila);
         }
     }
 

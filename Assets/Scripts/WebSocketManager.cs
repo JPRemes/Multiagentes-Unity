@@ -5,10 +5,6 @@ using UnityEngine.UI;
 using TMPro;
 using NativeWebSocket;
 
-// ============================================================
-// CLASES DE DATOS (deben coincidir con el JSON que manda Python)
-// ============================================================
-
 [Serializable]
 public class AgentData
 {
@@ -22,7 +18,8 @@ public class AgentData
     public float combustible_maximo;
     public int recolectado;      // solo cosechadoras
     public bool terminado;       // solo cosechadoras
-    public int entregado;        // solo tractores
+    public int entregado; 
+    public float gasolina;       // solo tractores
 }
 
 [Serializable]
@@ -111,13 +108,15 @@ public class WebSocketManager : MonoBehaviour
     public float anguloMovZNegativo = 270f;
 
     [Header("Interfaz")]
-    public TMP_Text statusText;
-    public TMP_Text agentCountText;
+    public TMP_Text granoRecolectadoText;
+    public TMP_Text combustibleConsumidoText;
     public TMP_Text pauseButtonText;
     public TMP_InputField inputSize;
     public TMP_InputField inputCosechadoras;
     public TMP_InputField inputTractores;
     public TMP_InputField inputObstaculo;
+    public TMP_InputField inputCapacidadGasolina;
+    public TMP_InputField inputCapacidadGrano; 
 
     [Header("Interfaz POV")]
     [Tooltip("Texto que muestra a que cosechadora esta siguiendo la camara POV")]
@@ -163,6 +162,7 @@ public class WebSocketManager : MonoBehaviour
 
     [Header("Graficos")]
     public FuelBarChartManager fuelBarChartManager;
+    public GrainFillChartManager grainFillChartManager;
 
     private string idAgentePOVCosechadora = null;   // id de la cosechadora que está siguiendo
     private string idAgentePOVTractor = null;   // id del tractor que está siguiendo
@@ -209,8 +209,8 @@ public class WebSocketManager : MonoBehaviour
                 : camaraTop.position.y;
         }
 
-        statusText.text = "Estado: Conectando...";
-        agentCountText.text = "Agentes: 0";
+        granoRecolectadoText.text = "Grano recolectado: 0";
+        combustibleConsumidoText.text = "Combustible consumido: 0";
 
         websocket = new WebSocket("ws://localhost:8765");
 
@@ -227,7 +227,6 @@ public class WebSocketManager : MonoBehaviour
         websocket.OnClose += (closeCode) =>
         {
             Debug.Log("Conexion cerrada");
-            statusText.text = "Estado: Desconectado";
         };
 
         websocket.OnMessage += (bytes) =>
@@ -302,6 +301,7 @@ public class WebSocketManager : MonoBehaviour
 
         UpdateAgents(data);
         fuelBarChartManager?.ActualizarDesdeEstado(data);
+        grainFillChartManager?.ActualizarDesdeEstado(data); 
         RemoveMissingAgents(data);
         ultimosAgentesRecibidos = data.agentes;
         AsignarCamaraPOVCosechadora(data);
@@ -827,22 +827,28 @@ public class WebSocketManager : MonoBehaviour
 
     void UpdateInterface(SimulationData data)
     {
-        if (data.terminado)
+        if (!data.terminado)
         {
-            statusText.text = $"Estado: Terminado (paso {data.step})";
-        }
-        else if (data.paused)
-        {
-            statusText.text = $"Estado: Pausado (paso {data.step})";
-            pauseButtonText.text = "CONTINUAR";
-        }
-        else
-        {
-            statusText.text = $"Estado: Ejecutando (paso {data.step})";
-            pauseButtonText.text = "PAUSAR";
+            pauseButtonText.text = data.paused ? "CONTINUAR" : "PAUSAR";
         }
 
-        agentCountText.text = "Agentes: " + data.agentes.Length;
+        int totalGranoRecolectado = 0;
+        float totalCombustibleConsumido = 0f;
+
+        foreach (AgentData agentData in data.agentes)
+        {
+            // Solo las cosechadoras tienen "recolectado"
+            if (agentData.tipo == "cosechadora")
+            {
+                totalGranoRecolectado += agentData.recolectado;
+            }
+
+            // El combustible consumido suma cosechadoras Y tractores
+            totalCombustibleConsumido += agentData.gasolina;
+        }
+
+        granoRecolectadoText.text = totalGranoRecolectado.ToString();
+        combustibleConsumidoText.text = totalCombustibleConsumido.ToString("0.0");
     }
 
     // ------------------------------------------------------
@@ -877,18 +883,23 @@ public class WebSocketManager : MonoBehaviour
         // lo vuelve a construir desde cero.
         LimpiarTerrenoVisual();
         fuelBarChartManager?.LimpiarTodo();
+        grainFillChartManager?.LimpiarTodo();
 
         int size = LeerEntero(inputSize, 25);
         int cosechadoras = LeerEntero(inputCosechadoras, 3);
         int tractores = LeerEntero(inputTractores, 2);
         float obstaculo = LeerFlotante(inputObstaculo, 0.05f);
+        float capacidadGasolina = LeerFlotante(inputCapacidadGasolina, 500f);
+        int capacidadGrano = LeerEntero(inputCapacidadGrano, 100);
 
         string json =
             "{\"command\":\"reset\",\"config\":{" +
             $"\"size\":{size}," +
             $"\"n_cosechadoras\":{cosechadoras}," +
             $"\"n_tractores\":{tractores}," +
-            $"\"densidad_obstaculo\":{obstaculo.ToString(System.Globalization.CultureInfo.InvariantCulture)}" +
+            $"\"densidad_obstaculo\":{obstaculo.ToString(System.Globalization.CultureInfo.InvariantCulture)}," +
+            $"\"capacidad_gasolina\":{capacidadGasolina.ToString(System.Globalization.CultureInfo.InvariantCulture)}," +
+            $"\"capacidad_grano\":{capacidadGrano}" +
             "}}";
 
         EnviarComando(json);

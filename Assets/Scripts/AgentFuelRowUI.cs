@@ -2,16 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-// ============================================================
-// Fila individual de la grafica de barras: una por agente
-// (cosechadora o tractor). La barra representa que tan lleno
-// esta el tanque de combustible de ESE agente (combustible /
-// combustible_maximo), asi que cada barra tiene su propia
-// referencia de "llena", no una referencia compartida entre
-// todos los agentes como en TeamRowUI (ahi el 100% era el
-// maximo de wins de TODOS los equipos).
-// ============================================================
-
+[RequireComponent(typeof(LayoutElement))]
 public class AgentFuelRowUI : MonoBehaviour
 {
     [Header("Referencias UI")]
@@ -29,6 +20,14 @@ public class AgentFuelRowUI : MonoBehaviour
     [Range(0f, 1f)] public float umbralBajo = 0.3f;
 
     private float maxBarWidth;
+    private LayoutElement layoutElement;
+
+    private void Awake()
+    {
+        // Se toma del mismo objeto donde vive este script (el
+        // objeto raiz de la fila, "FilaAgente" en el prefab).
+        layoutElement = GetComponent<LayoutElement>();
+    }
 
     // Se llama una sola vez, cuando la fila se crea por primera
     // vez para un agente nuevo.
@@ -52,6 +51,22 @@ public class AgentFuelRowUI : MonoBehaviour
         barFill.sizeDelta = new Vector2(barWidth, barFill.sizeDelta.y);
 
         barImage.color = ColorSegunFraccion(fraccion);
+    }
+
+    // Llamado por el FuelBarChartManager cada vez que cambia la
+    // cantidad de filas, para topar la altura entre un minimo
+    // (legible) y un maximo (que no se vea gigante si hay pocos
+    // agentes). Al fijar preferredHeight y apagar flexibleHeight,
+    // el Vertical Layout Group deja de "estirar" la fila.
+    public void SetAlturaPreferida(float altura)
+    {
+        if (layoutElement == null)
+        {
+            layoutElement = GetComponent<LayoutElement>();
+        }
+
+        layoutElement.preferredHeight = altura;
+        layoutElement.flexibleHeight = 0f;
     }
 
     private Color ColorSegunFraccion(float fraccion)
