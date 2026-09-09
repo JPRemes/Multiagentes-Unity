@@ -121,7 +121,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7343361831784880127}
-  - component: {fileID: 6332090239602757763}
   m_Layer: 0
   m_Name: Tractor_bueno
   m_TagString: Untagged
@@ -147,27 +146,6 @@ Transform:
   - {fileID: 3779326990653951488}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
---- !u!114 &6332090239602757763
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5930296341253710666}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8d4e8dffd376e43aeba4a1fae919c937, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Tractor
-  grano: 0
-  capacidad: 60
-  ruta: []
-  pasosLentosRestantes: 0
-  entregado: 0
-  estado: esperando
-  cosechadoraObjetivo: {fileID: 0}
-  intervaloPropio: 0.15
-  offsetRotacionY: 0
 --- !u!1001 &3438671085949949249
 PrefabInstance:
   m_ObjectHideFlags: 0

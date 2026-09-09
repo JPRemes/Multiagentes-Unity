@@ -120,17 +120,17 @@ public class WebSocketManager : MonoBehaviour
     public bool pivoteEnEsquina = false;
 
     [Header("Camaras")]
-    public Transform camara1;
+    public Transform camaraISO;
     public Transform camaraTop;
 
     [Tooltip("Tamaño de grid para el cual quedaron bien posicionadas las camaras en la escena")]
     public int tamanoDisenoCamaras = 25;
 
     [Tooltip("Altura (Y) que tiene cada camara cuando el grid es tamanoDisenoCamaras")]
-    private float alturaCamara1Base = 30f;
     private float alturaCamaraTopBase = 30f;
+    private Vector3 offsetCamaraISO;
 
-    [Header("Camara POV (se pega a una cosechadora)")]
+    [Header("Camaras POV")]
     public Transform camaraPOVCosechadora;
     public Transform camaraPOVTractor;
 
@@ -164,7 +164,12 @@ public class WebSocketManager : MonoBehaviour
 
     async void Start()
     {
-        if (camara1 != null) alturaCamara1Base = camara1.position.y;
+        if (camaraISO != null)
+        {
+            float centroInicial = (tamanoDisenoCamaras - 1) / 2f;
+            Vector3 centroGridInicial = new Vector3(centroInicial, 0f, centroInicial);
+            offsetCamaraISO = camaraISO.position - centroGridInicial;
+        }
         if (camaraTop != null) alturaCamaraTopBase = camaraTop.position.y;
 
         statusText.text = "Estado: Conectando...";
@@ -404,20 +409,20 @@ public class WebSocketManager : MonoBehaviour
         }
 
         float factor = (float)size / tamanoDisenoCamaras;
+        // Centro del grid: las celdas van de (0,0) a (size-1, size-1),
+        // igual que en AjustarEscenario.
+        float centro = (size - 1) / 2f;
 
-        if (camara1 != null)
+        if (camaraISO != null)
         {
-            Vector3 pos = camara1.position;
-            pos.y = alturaCamara1Base * factor;
-            camara1.position = pos;
+            // Escala el offset completo (X, Y, Z) para mantener el
+            // mismo angulo isometrico, solo que mas lejos/mas alto.
+            Vector3 centroGrid = new Vector3(centro, 0f, centro);
+            camaraISO.position = centroGrid + offsetCamaraISO * factor;
         }
 
         if (camaraTop != null)
         {
-            // Centro del grid: las celdas van de (0,0) a (size-1, size-1),
-            // igual que en AjustarEscenario.
-            float centro = (size - 1) / 2f;
-
             Vector3 pos = camaraTop.position;
             pos.x = centro;
             pos.y = alturaCamaraTopBase * factor;

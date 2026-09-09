@@ -9044,8 +9044,8 @@ RectTransform:
   - {fileID: 859093781}
   - {fileID: 182833694}
   - {fileID: 1904180883}
-  - {fileID: 1830418560}
   - {fileID: 1165768114}
+  - {fileID: 1830418560}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -10973,7 +10973,7 @@ Transform:
   m_GameObject: {fileID: 1115954216}
   serializedVersion: 2
   m_LocalRotation: {x: 0.46174863, y: 0, z: 0, w: 0.8870109}
-  m_LocalPosition: {x: 9.5, y: 18.44457, z: -3.415027}
+  m_LocalPosition: {x: 10.41, y: 20.57, z: -4.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -11213,12 +11213,12 @@ GameObject:
   m_Component:
   - component: {fileID: 1165768114}
   m_Layer: 5
-  m_Name: pagina_3
+  m_Name: pagina_2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1165768114
 RectTransform:
   m_ObjectHideFlags: 0
@@ -11226,12 +11226,12 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1165768113}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1570397766}
+  - {fileID: 1578480058}
   m_Father: {fileID: 876178265}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -12826,7 +12826,7 @@ MonoBehaviour:
   escenarioFondo: {fileID: 364803030}
   tamanoDisenoFondo: 25
   pivoteEnEsquina: 1
-  camara1: {fileID: 1115954220}
+  camaraISO: {fileID: 1115954220}
   camaraTop: {fileID: 330585546}
   tamanoDisenoCamaras: 25
   camaraPOVCosechadora: {fileID: 1535652239}
@@ -15517,15 +15517,15 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1570397765}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1165768114}
+  m_Father: {fileID: 1904180883}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0.5, y: 1}
+  m_AnchorMin: {x: 0.5, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -15712,7 +15712,7 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1904180883}
+  m_Father: {fileID: 1165768114}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
   m_AnchorMax: {x: 1, y: 1}
@@ -17990,7 +17990,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1830418560}
   m_Layer: 5
-  m_Name: pagina_2
+  m_Name: pagina_3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -18554,7 +18554,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1904180883
 RectTransform:
   m_ObjectHideFlags: 0
@@ -18568,7 +18568,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1890377958}
-  - {fileID: 1578480058}
+  - {fileID: 1570397766}
   m_Father: {fileID: 876178265}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}

@@ -9,7 +9,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 9192131088533453492}
-  - component: {fileID: 1817670531441919358}
   m_Layer: 0
   m_Name: Cosechadora
   m_TagString: Untagged
@@ -39,27 +38,6 @@ Transform:
   - {fileID: 7547981311862682829}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
---- !u!114 &1817670531441919358
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7521767085060430946}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bcc4cdee90df4456c992692b0ba9bdec, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Cosechadora
-  grano: 0
-  capacidad: 100
-  recolectado: 0
-  ruta: []
-  solicitandoTractor: 0
-  regresandoAlSilo: 0
-  umbralTractor: 0.6
-  tractorAsignado: {fileID: 0}
-  offsetRotacionY: 0
 --- !u!1001 &28836903669869286
 PrefabInstance:
   m_ObjectHideFlags: 0
