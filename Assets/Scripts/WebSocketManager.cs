@@ -41,6 +41,7 @@ public class SiloData
 public class SimulationData
 {
     public bool paused;
+    public bool iniciado;
     public int step;
     public bool terminado;
     public float tick;
@@ -111,6 +112,7 @@ public class WebSocketManager : MonoBehaviour
     public TMP_Text granoRecolectadoText;
     public TMP_Text combustibleConsumidoText;
     public TMP_Text pauseButtonText;
+    public TMP_Text iniciarReiniciarButtonText;
     public TMP_InputField inputSize;
     public TMP_InputField inputCosechadoras;
     public TMP_InputField inputTractores;
@@ -164,6 +166,13 @@ public class WebSocketManager : MonoBehaviour
     public FuelBarChartManager fuelBarChartManager;
     public GrainFillChartManager grainFillChartManager;
 
+    [Header("Panel de inicio")]
+    [Tooltip("Panel que se muestra antes de iniciar la simulacion, con un mensaje como 'Inicie la simulacion para visualizar datos'")]
+    public GameObject panelInicio;
+
+    [Tooltip("Referencia al PageManager que controla las paginas de datos")]
+    public PageManager pageManager;
+
     private string idAgentePOVCosechadora = null;   // id de la cosechadora que está siguiendo
     private string idAgentePOVTractor = null;   // id del tractor que está siguiendo
 
@@ -181,6 +190,8 @@ public class WebSocketManager : MonoBehaviour
     private float tiempoUltimoMensaje = -1f;   // Time.time del ultimo estado recibido, para medir el intervalo real
     private GameObject siloInstancia;
     private AgentData[] ultimosAgentesRecibidos;   // ultima lista de agentes recibida del servidor
+
+    private bool simulacionIniciada = false;
 
     // ------------------------------------------------------
     // Conexion
@@ -209,8 +220,11 @@ public class WebSocketManager : MonoBehaviour
                 : camaraTop.position.y;
         }
 
-        granoRecolectadoText.text = "Grano recolectado: 0";
-        combustibleConsumidoText.text = "Combustible consumido: 0";
+        granoRecolectadoText.text = "0";
+        combustibleConsumidoText.text = "0";
+        ActualizarTextoIniciarReiniciar();
+
+        MostrarPanelInicio();
 
         websocket = new WebSocket("ws://localhost:8765");
 
@@ -827,6 +841,13 @@ public class WebSocketManager : MonoBehaviour
 
     void UpdateInterface(SimulationData data)
     {
+        if (data.iniciado && !simulacionIniciada)
+        {
+            simulacionIniciada = true;
+        }
+
+        ActualizarTextoIniciarReiniciar();
+
         if (!data.terminado)
         {
             pauseButtonText.text = data.paused ? "CONTINUAR" : "PAUSAR";
@@ -874,6 +895,32 @@ public class WebSocketManager : MonoBehaviour
         EnviarComando(command);
     }
 
+    void ActualizarTextoIniciarReiniciar()
+    {
+        if (iniciarReiniciarButtonText == null)
+        {
+            return;
+        }
+
+        iniciarReiniciarButtonText.text = simulacionIniciada ? "REINICIAR" : "INICIAR";
+    }
+
+    public void OnClickIniciarReiniciar()
+    {
+        if (!simulacionIniciada)
+        {
+            string json = ConstruirComandoConConfig("iniciar");
+            EnviarComando(json);
+            simulacionIniciada = true;
+            ActualizarTextoIniciarReiniciar();
+            MostrarPrimeraPagina();
+        }
+        else
+        {
+            ResetSimulation();
+        }
+    }
+
     public void ResetSimulation()
     {
         // Primero limpiamos el terreno que se ve ahorita, para
@@ -885,6 +932,15 @@ public class WebSocketManager : MonoBehaviour
         fuelBarChartManager?.LimpiarTodo();
         grainFillChartManager?.LimpiarTodo();
 
+        string json = ConstruirComandoConConfig("reset");
+        EnviarComando(json);
+    }
+
+    // Arma el JSON de comando ("iniciar" o "reset") leyendo los
+    // valores actuales de los inputs de la UI, para no repetir
+    // esta lectura en los dos lugares donde se necesita.
+    string ConstruirComandoConConfig(string comando)
+    {
         int size = LeerEntero(inputSize, 25);
         int cosechadoras = LeerEntero(inputCosechadoras, 3);
         int tractores = LeerEntero(inputTractores, 2);
@@ -892,8 +948,8 @@ public class WebSocketManager : MonoBehaviour
         float capacidadGasolina = LeerFlotante(inputCapacidadGasolina, 500f);
         int capacidadGrano = LeerEntero(inputCapacidadGrano, 100);
 
-        string json =
-            "{\"command\":\"reset\",\"config\":{" +
+        return
+            "{\"command\":\"" + comando + "\",\"config\":{" +
             $"\"size\":{size}," +
             $"\"n_cosechadoras\":{cosechadoras}," +
             $"\"n_tractores\":{tractores}," +
@@ -901,8 +957,6 @@ public class WebSocketManager : MonoBehaviour
             $"\"capacidad_gasolina\":{capacidadGasolina.ToString(System.Globalization.CultureInfo.InvariantCulture)}," +
             $"\"capacidad_grano\":{capacidadGrano}" +
             "}}";
-
-        EnviarComando(json);
     }
 
     void LimpiarTerrenoVisual()
@@ -959,5 +1013,27 @@ public class WebSocketManager : MonoBehaviour
             System.Globalization.CultureInfo.InvariantCulture,
             out float valor
         ) ? valor : porDefecto;
+    }
+
+    // Estado antes de arrancar: panel de inicio visible, paginas
+    // de datos apagadas (todavia no hay nada que mostrar).
+    void MostrarPanelInicio()
+    {
+        if (panelInicio != null)
+        {
+            panelInicio.SetActive(true);
+        }
+    }
+
+    // Se llama al iniciar la simulacion: apaga el panel de inicio,
+    // prende el contenedor de paginas y lo deja en la primera pagina.
+    void MostrarPrimeraPagina()
+    {
+        if (panelInicio != null)
+        {
+            panelInicio.SetActive(false);
+        }
+
+        pageManager?.MostrarPrimeraPagina();
     }
 }

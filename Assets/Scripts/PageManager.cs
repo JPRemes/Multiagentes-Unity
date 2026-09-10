@@ -25,8 +25,25 @@ public class PageManager : MonoBehaviour
 
     void Start()
     {
+        OcultarTodas();
+    }
 
-        MostrarPagina(paginaActual);
+    // Apaga todas las paginas. Se usa antes de que arranque la
+    // simulacion, para que no se vea ninguna pagina de datos.
+    public void OcultarTodas()
+    {
+        if (paginas == null)
+        {
+            return;
+        }
+
+        foreach (GameObject pagina in paginas)
+        {
+            if (pagina != null)
+            {
+                pagina.SetActive(false);
+            }
+        }
     }
 
     public void PaginaSiguiente()
@@ -93,5 +110,11 @@ public class PageManager : MonoBehaviour
 
         string prefijo = incluirPalabraPagina ? "p " : "";
         textoPagina.text = $"{prefijo}{paginaActual + 1} / {paginas.Length}";
+    }
+
+    public void MostrarPrimeraPagina()
+    {
+        MostrarPagina(0);
+        paginaActual = 0;
     }
 }
