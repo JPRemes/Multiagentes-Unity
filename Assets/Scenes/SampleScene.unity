@@ -16317,6 +16317,7 @@ MonoBehaviour:
   granoRecolectadoText: {fileID: 241371263}
   combustibleConsumidoText: {fileID: 1815621464}
   pauseButtonText: {fileID: 2036591367}
+  pauseButton: {fileID: 1940582799}
   iniciarReiniciarButtonText: {fileID: 242117465}
   inputSize: {fileID: 204529255}
   inputCosechadoras: {fileID: 1198712205}
