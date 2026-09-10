@@ -26,6 +26,7 @@ public class PageManager : MonoBehaviour
     void Start()
     {
         OcultarTodas();
+        DesactivarControles();
     }
 
     // Apaga todas las paginas. Se usa antes de que arranque la
@@ -44,6 +45,26 @@ public class PageManager : MonoBehaviour
                 pagina.SetActive(false);
             }
         }
+    }
+
+    // Deja los botones de pagina y el texto apagados mientras se
+    // ve el panel de inicio (todavia no hay nada que paginar).
+    public void DesactivarControles()
+    {
+        if (botonIzquierda != null) botonIzquierda.interactable = false;
+        if (botonDerecha != null) botonDerecha.interactable = false;
+        if (textoPagina != null) textoPagina.gameObject.SetActive(false);
+    }
+
+    // Los vuelve a prender cuando arranca la simulacion.
+    public void ActivarControles()
+    {
+        if (textoPagina != null) textoPagina.gameObject.SetActive(true);
+
+        if (botonIzquierda != null) botonIzquierda.interactable = true;
+        if (botonDerecha != null) botonDerecha.interactable = true;
+
+        ActualizarBotones();
     }
 
     public void PaginaSiguiente()
@@ -114,6 +135,7 @@ public class PageManager : MonoBehaviour
 
     public void MostrarPrimeraPagina()
     {
+        ActivarControles();
         MostrarPagina(0);
         paginaActual = 0;
     }

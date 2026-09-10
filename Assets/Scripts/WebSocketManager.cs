@@ -112,6 +112,7 @@ public class WebSocketManager : MonoBehaviour
     public TMP_Text granoRecolectadoText;
     public TMP_Text combustibleConsumidoText;
     public TMP_Text pauseButtonText;
+    public Button pauseButton;
     public TMP_Text iniciarReiniciarButtonText;
     public TMP_InputField inputSize;
     public TMP_InputField inputCosechadoras;
@@ -1028,6 +1029,11 @@ public class WebSocketManager : MonoBehaviour
         {
             panelInicio.SetActive(true);
         }
+
+        if (pauseButton != null)
+        {
+            pauseButton.interactable = false;
+        }
     }
 
     // Se llama al iniciar la simulacion: apaga el panel de inicio,
@@ -1037,6 +1043,11 @@ public class WebSocketManager : MonoBehaviour
         if (panelInicio != null)
         {
             panelInicio.SetActive(false);
+        }
+
+        if (pauseButton != null)
+        {
+            pauseButton.interactable = true;
         }
 
         pageManager?.MostrarPrimeraPagina();
